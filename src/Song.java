@@ -1,34 +1,51 @@
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.Tag;
 import org.jaudiotagger.tag.FieldKey;
+import org.jaudiotagger.tag.Tag;
 
 import java.io.File;
 
-// Esta clase se usa para describir una canción
 public class Song {
-    private String songTitle;
-    private String songArtist;
-    private String songLength;
-    private String filepath;
+    private String songTitle;   // Título de la canción
+    private String songArtist;  // Artista de la canción
+    private String assets;  // Duración de la canción
+    private String filepath;    // Ruta del archivo de la canción
 
+    /**
+     * Constructor de la clase Song.
+     * Lee los metadatos de la canción (título y artista) utilizando JAudioTagger.
+     * @param filepath Ruta del archivo de la canción.
+     */
     public Song(String filepath) {
         this.filepath = filepath;
+
         try {
-            // Usa la biblioteca jAudioTagger para crear un AudioFile
-            AudioFile audioFile = AudioFileIO.read(new File(filepath));
-            // Leer los metadatos del archivo de audio
+            // Leer el archivo de audio
+            File file = new File(filepath);
+            AudioFile audioFile = AudioFileIO.read(file);
+
+            // Obtener los metadatos (etiquetas) del archivo
             Tag tag = audioFile.getTag();
+
             if (tag != null) {
+                // Extraer el título y el artista de los metadatos
                 songTitle = tag.getFirst(FieldKey.TITLE);
                 songArtist = tag.getFirst(FieldKey.ARTIST);
             } else {
-                // No se puede leer el meta del archivo mp3
-                songTitle = "N/A";
-                songArtist = "N/A";
+                // Si no hay metadatos, usar valores predeterminados
+                songTitle = "Desconocido";
+                songArtist = "Desconocido";
             }
+
+            // Obtener la duración de la canción (en segundos)
+            assets = String.valueOf(audioFile.getAudioHeader().getTrackLength());
+
         } catch (Exception e) {
             e.printStackTrace();
+
+            songTitle = "Desconocido";
+            songArtist = "Desconocido";
+            assets = "Desconocido";
         }
     }
 
@@ -41,8 +58,8 @@ public class Song {
         return songArtist;
     }
 
-    public String getSongLength() {
-        return songLength;
+    public String getAssets() {
+        return assets;
     }
 
     public String getFilepath() {

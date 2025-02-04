@@ -8,212 +8,166 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 
 public class MusicPlayerGUI extends JFrame {
-    // configuracion de color
-
+    // Configuraciones de color
     public static final Color FRAME_COLOR = Color.BLACK;
     public static final Color TEXT_COLOR = Color.WHITE;
 
-    private MusicPlayer musicPlayer ;
-
-    // permitir utilizar el explorador de archivos en la app
+    private MusicPlayer musicPlayer;
     private JFileChooser jFileChooser;
-
     private JLabel songTitle, songArtist;
-    private JPanel playbackBtns;
+    private JPanel playbackButtons;
+
     public MusicPlayerGUI() {
-        // llama al constructor JFrame para configurar la interfaz grafica  de usuario
-        super("Reproductor");
-
-        // establecer el ancho y el alto
+        super("Reproductor de Música");
         setSize(400, 600);
-
-        // finalizar el proceso cuando la app este cerrada
-
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-        // inicie la aplicacion en el centro de la pantalla
         setLocationRelativeTo(null);
-
-        // evita que se cambie el tamaño de  la aplicacion
         setResizable(false);
-
-        // establecer el diseño en nulo lo que nos permite controlar las cordenadas,
-        // (x, y) de nuestros componentes y tambien establecer la altura y ancho.
-
         setLayout(null);
-        // cambiar el color del marco
         getContentPane().setBackground(FRAME_COLOR);
 
-        jFileChooser= new JFileChooser();
         musicPlayer = new MusicPlayer();
-
-        // establecer una ruta predeterminada para el explorador de archivos
-        jFileChooser.setCurrentDirectory(new File("src/assets"));
-
-        //selecionar archivo de filtro mp3
-        jFileChooser.setFileFilter(new FileNameExtensionFilter("MP3 Files", "mp3"));
+        jFileChooser = new JFileChooser();
+        configureFileChooser();
 
         addGuiComponents();
     }
+
+    private void configureFileChooser() {
+        jFileChooser.setCurrentDirectory(new File("src/assets"));
+        jFileChooser.setFileFilter(new FileNameExtensionFilter("Archivos MP3", "mp3"));
+    }
+
     private void addGuiComponents() {
-
-        // agregar barra de herramienta
         addToolbar();
-
-        //cargar imagen de registro ( el disco)
-        JLabel songImage = new JLabel(loadImage( "src/assets/record.png"));
-        songImage.setBounds(0, 50, getWidth() - 20, 225);
-        add(songImage);
-        // titulo de la cancion
-        songTitle = new JLabel("titulo de la cancion");
-        songTitle.setBounds(0, 285, getWidth() - 10, 30);
-        songTitle.setFont(new Font("Dialog", Font.BOLD,  24));
-        songTitle.setForeground(TEXT_COLOR);
-        songTitle.setHorizontalAlignment(SwingConstants.CENTER);
-        add(songTitle);
-        // artista de la cancion
-        songArtist = new JLabel("artista");
-        songArtist.setBounds(0, 315, getWidth() -10 , 30);
-        songArtist.setFont(new Font("Dialog", Font.PLAIN,  24));
-        songArtist.setForeground(TEXT_COLOR);
-        songArtist.setHorizontalAlignment(SwingConstants.CENTER);
-        add(songArtist);
-
-        // CONTROL DESLIZANTE DE REPRODUCION
-        JSlider playbackSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 0);
-        playbackSlider.setBounds(getWidth()/2 -300/2, 365, 300, 40);
-        playbackSlider.setBackground(null);
-        add(playbackSlider);
-
-
-        // botones de reproducion , anterior , siguiente y pausa
-        addPlaybackBtns();
-
+        addAlbumArt();
+        addSongInfo();
+        addPlaybackSlider();
+        addPlaybackButtons();
     }
 
     private void addToolbar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setBounds(0, 0, getWidth(), 20);
-
-        // Evita que la barra de herramientas se mueva
         toolBar.setFloatable(false);
 
-        // Agrega un menú desplegable
         JMenuBar menuBar = new JMenuBar();
-        toolBar.add(menuBar);
+        JMenu songMenu = new JMenu("Canción");
 
-        // Agregar menú de canciones donde colocaremos la opción de cargar
-        JMenu songMenu = new JMenu("Cancion");
-        menuBar.add(songMenu);
-
-        // Agregar elemento "Cargar Canción" en el menú de canciones
-        JMenuItem loadSong = new JMenuItem("Cargar cancion"); // Cambiar a JMenuItem
-        loadSong.addActionListener(new ActionListener() {
+        JMenuItem loadSongItem = new JMenuItem("Cargar Canción");
+        loadSongItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // Abre el diálogo de selección de archivos y muestra el título
                 int result = jFileChooser.showOpenDialog(MusicPlayerGUI.this);
-                // Verifica si el usuario seleccionó un archivo
                 if (result == JFileChooser.APPROVE_OPTION) {
                     File selectedFile = jFileChooser.getSelectedFile();
-                    if (selectedFile != null) {
-                        // Crear un objeto Song basado en el archivo seleccionado
-                        Song song = new Song(selectedFile.getPath());
-                        // Cargar la canción en el reproductor
-                        musicPlayer.loadSong(song);
-                        // actualizar el titulo de la cancion y el artista
-                        updateSongTitleArtist(song);
-                        // activar el boton de pausa y desativar el boton de reproducion
-                        enablePauseButtonDisablePlayButton();
-                    }
+                    Song song = new Song(selectedFile.getPath());
+                    musicPlayer.loadSong(song);
+                    updateSongInfo(song);
+                    togglePlaybackButtons(true);
                 }
             }
-
         });
-        songMenu.add(loadSong);
 
-        // Ahora agregamos el menú de lista de reproducción
-        JMenu playlistsMenu = new JMenu("Reproducir cancion");
-        menuBar.add(playlistsMenu);
-        // Luego, agregar elementos al menú de lista de reproducción
-        JMenuItem createPlaylist = new JMenuItem("Create Playlist");
-        playlistsMenu.add(createPlaylist);
-        JMenuItem loadPlaylist = new JMenuItem("Cargar cancion");
-        playlistsMenu.add(loadPlaylist);
+        songMenu.add(loadSongItem);
+        menuBar.add(songMenu);
+        toolBar.add(menuBar);
         add(toolBar);
     }
-    private  void addPlaybackBtns() {
-        playbackBtns = new JPanel();
-        playbackBtns.setBounds(0, 435, getWidth() - 10, 80);
-        playbackBtns.setBackground(null);
 
-        // Botón de anterior
-        JButton prevButton = new JButton(loadImage("src/assets/previous.png"));
-        prevButton.setBorderPainted(false);
-        prevButton.setBackground(null);
-        playbackBtns.add(prevButton);
-
-        // boton de play
-        JButton playButton = new JButton(loadImage("src/assets/play.png"));
-        playButton.setBorderPainted(false);
-        playButton.setBackground(null);
-        playbackBtns.add(playButton);
-
-        // boton de pausa
-        JButton pauseButton = new JButton(loadImage("src/assets/pause.png"));
-        pauseButton.setBorderPainted(false);
-        pauseButton.setBackground(null);
-        pauseButton.setVisible(false);
-        playbackBtns.add(pauseButton);
-        // boton de siguiente
-        JButton nextButton = new JButton(loadImage("src/assets/next.png"));
-        nextButton.setBorderPainted(false);
-        nextButton.setBackground(null);
-        playbackBtns.add(nextButton);
-        add(playbackBtns);
+    private void addAlbumArt() {
+        JLabel albumArt = new JLabel(loadImage("src/assets/record.png"));
+        albumArt.setBounds(0, 50, getWidth() - 20, 225);
+        add(albumArt);
     }
 
-    private void updateSongTitleArtist(Song song){
+    private void addSongInfo() {
+        songTitle = new JLabel("Título no disponible");
+        songTitle.setBounds(0, 285, getWidth() - 10, 30);
+        songTitle.setFont(new Font("Dialog", Font.BOLD, 24));
+        songTitle.setForeground(TEXT_COLOR);
+        songTitle.setHorizontalAlignment(SwingConstants.CENTER);
+        add(songTitle);
+
+        songArtist = new JLabel("Artista desconocido");
+        songArtist.setBounds(0, 315, getWidth() - 10, 30);
+        songArtist.setFont(new Font("Dialog", Font.PLAIN, 18));
+        songArtist.setForeground(TEXT_COLOR);
+        songArtist.setHorizontalAlignment(SwingConstants.CENTER);
+        add(songArtist);
+    }
+
+    private void addPlaybackSlider() {
+        JSlider progressSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 0);
+        progressSlider.setBounds(getWidth()/2 - 300/2, 365, 300, 40);
+        progressSlider.setBackground(null);
+        add(progressSlider);
+    }
+
+    private void addPlaybackButtons() {
+        playbackButtons = new JPanel();
+        playbackButtons.setBounds(0, 435, getWidth() - 10, 80);
+        playbackButtons.setBackground(null);
+
+        // Botón Anterior
+        JButton prevButton = createIconButton("src/assets/previous.png");
+        playbackButtons.add(prevButton);
+
+        // Botón Play/Pause
+        JButton playButton = createIconButton("src/assets/play.png");
+        JButton pauseButton = createIconButton("src/assets/pause.png");
+        pauseButton.setVisible(false);
+
+        playButton.addActionListener(e -> {
+            musicPlayer.playCurrentSong();
+            togglePlaybackButtons(true);
+        });
+
+        pauseButton.addActionListener(e -> {
+            musicPlayer.pause();
+            togglePlaybackButtons(false);
+        });
+
+        playbackButtons.add(playButton);
+        playbackButtons.add(pauseButton);
+
+        // Botón Siguiente
+        JButton nextButton = createIconButton("src/assets/next.png");
+        playbackButtons.add(nextButton);
+
+        add(playbackButtons);
+    }
+
+    private JButton createIconButton(String imagePath) {
+        JButton button = new JButton(loadImage(imagePath));
+        button.setBorderPainted(false);
+        button.setBackground(null);
+        button.setFocusPainted(false);
+        return button;
+    }
+
+    private void updateSongInfo(Song song) {
         songTitle.setText(song.getSongTitle());
         songArtist.setText(song.getSongArtist());
     }
-    private void enablePauseButtonDisablePlayButton(){
-     //recupera la referencia al boton del panel de reproduccionBtns
-     JButton playButton = (JButton) playbackBtns.getComponent(1) ;
-     JButton pauseButton = ( JButton) playbackBtns.getComponent(2) ;
 
-     // agregar el boton de reproducion
-         playButton.setVisible(false);
-         playButton.setEnabled(false);
-         // actiavr el boton de pausa
-        pauseButton.setVisible(true);
-        pauseButton.setEnabled(true);
+    private void togglePlaybackButtons(boolean isPlaying) {
+        JButton playButton = (JButton) playbackButtons.getComponent(1);
+        JButton pauseButton = (JButton) playbackButtons.getComponent(2);
+
+        playButton.setVisible(!isPlaying);
+        playButton.setEnabled(!isPlaying);
+        pauseButton.setVisible(isPlaying);
+        pauseButton.setEnabled(isPlaying);
     }
 
-    private void enablePlayButtonDisablePauseButton() {
-        //recupera la referencia al boton del panel de reproduccionBtns
-        JButton playButton = (JButton) playbackBtns.getComponent(1);
-        JButton pauseButton = (JButton) playbackBtns.getComponent(2);
-
-        // agregar el boton de reproducion
-        playButton.setVisible(true);
-        playButton.setEnabled(true);
-        // desativar el boton de pausa
-        pauseButton.setVisible(false);
-        pauseButton.setEnabled(false);
-    }
     private ImageIcon loadImage(String imagePath) {
         try {
-
-            // lee el archivo dado
             BufferedImage image = ImageIO.read(new File(imagePath));
-            // devuelve el icon de imagen
             return new ImageIcon(image);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        // no se puede encontrar el recurso
         return null;
     }
-
 }
