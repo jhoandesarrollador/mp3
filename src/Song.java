@@ -27,6 +27,8 @@ public class Song {
                 songTitle = "N/A";
                 songArtist = "N/A";
             }
+            // Obtener la duración en segundos
+            songLength = String.valueOf(audioFile.getAudioHeader().getTrackLength());
         } catch (Exception e) {
             e.printStackTrace();
         }

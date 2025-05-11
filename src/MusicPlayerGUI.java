@@ -12,6 +12,11 @@ public class MusicPlayerGUI extends JFrame {
 
     public static final Color FRAME_COLOR = Color.BLACK;
     public static final Color TEXT_COLOR = Color.WHITE;
+    public static final Color FRAME_COLOR_DARK = Color.BLACK;
+    public static final Color TEXT_COLOR_DARK = Color.WHITE;
+    public static final Color FRAME_COLOR_LIGHT = Color.WHITE;
+    public static final Color TEXT_COLOR_LIGHT = Color.BLACK;
+    private boolean darkMode = true;
 
     private MusicPlayer musicPlayer ;
 
@@ -20,6 +25,12 @@ public class MusicPlayerGUI extends JFrame {
 
     private JLabel songTitle, songArtist;
     private JPanel playbackBtns;
+    private JSlider playbackSlider;
+    private JLabel timeLabel;
+    private Timer progressTimer;
+    private int songDurationSeconds = 0;
+    private int currentSecond = 0;
+
     public MusicPlayerGUI() {
         // llama al constructor JFrame para configurar la interfaz grafica  de usuario
         super("Reproductor");
@@ -80,11 +91,27 @@ public class MusicPlayerGUI extends JFrame {
         add(songArtist);
 
         // CONTROL DESLIZANTE DE REPRODUCION
-        JSlider playbackSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 0);
+        playbackSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 0);
         playbackSlider.setBounds(getWidth()/2 -300/2, 365, 300, 40);
         playbackSlider.setBackground(null);
+        playbackSlider.setEnabled(false);
+        playbackSlider.addChangeListener(e -> {
+            if (playbackSlider.getValueIsAdjusting() && songDurationSeconds > 0) {
+                int newSecond = (int) ((playbackSlider.getValue() / 100.0) * songDurationSeconds);
+                currentSecond = newSecond;
+                updateTimeLabel();
+                // Aquí podrías implementar el salto real en la reproducción si la librería lo permite
+            }
+        });
         add(playbackSlider);
 
+        // Etiqueta para mostrar el tiempo transcurrido y total
+        timeLabel = new JLabel("00:00 / 00:00");
+        timeLabel.setBounds(getWidth()/2 - 75, 410, 150, 20);
+        timeLabel.setFont(new Font("Dialog", Font.PLAIN, 14));
+        timeLabel.setForeground(TEXT_COLOR);
+        timeLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        add(timeLabel);
 
         // botones de reproducion , anterior , siguiente y pausa
         addPlaybackBtns();
@@ -94,52 +121,43 @@ public class MusicPlayerGUI extends JFrame {
     private void addToolbar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setBounds(0, 0, getWidth(), 20);
-
-        // Evita que la barra de herramientas se mueva
         toolBar.setFloatable(false);
-
-        // Agrega un menú desplegable
         JMenuBar menuBar = new JMenuBar();
         toolBar.add(menuBar);
-
-        // Agregar menú de canciones donde colocaremos la opción de cargar
         JMenu songMenu = new JMenu("Cancion");
         menuBar.add(songMenu);
-
-        // Agregar elemento "Cargar Canción" en el menú de canciones
-        JMenuItem loadSong = new JMenuItem("Cargar cancion"); // Cambiar a JMenuItem
+        JMenuItem loadSong = new JMenuItem("Cargar cancion");
         loadSong.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // Abre el diálogo de selección de archivos y muestra el título
                 int result = jFileChooser.showOpenDialog(MusicPlayerGUI.this);
-                // Verifica si el usuario seleccionó un archivo
                 if (result == JFileChooser.APPROVE_OPTION) {
                     File selectedFile = jFileChooser.getSelectedFile();
                     if (selectedFile != null) {
-                        // Crear un objeto Song basado en el archivo seleccionado
                         Song song = new Song(selectedFile.getPath());
-                        // Cargar la canción en el reproductor
                         musicPlayer.loadSong(song);
-                        // actualizar el titulo de la cancion y el artista
                         updateSongTitleArtist(song);
-                        // activar el boton de pausa y desativar el boton de reproducion
                         enablePauseButtonDisablePlayButton();
                     }
                 }
             }
-
         });
         songMenu.add(loadSong);
-
-        // Ahora agregamos el menú de lista de reproducción
         JMenu playlistsMenu = new JMenu("Reproducir cancion");
         menuBar.add(playlistsMenu);
-        // Luego, agregar elementos al menú de lista de reproducción
         JMenuItem createPlaylist = new JMenuItem("Create Playlist");
         playlistsMenu.add(createPlaylist);
         JMenuItem loadPlaylist = new JMenuItem("Cargar cancion");
         playlistsMenu.add(loadPlaylist);
+        // Menú de tema
+        JMenu themeMenu = new JMenu("Tema");
+        menuBar.add(themeMenu);
+        JMenuItem darkItem = new JMenuItem("Oscuro");
+        JMenuItem lightItem = new JMenuItem("Claro");
+        themeMenu.add(darkItem);
+        themeMenu.add(lightItem);
+        darkItem.addActionListener(e -> setTheme(true));
+        lightItem.addActionListener(e -> setTheme(false));
         add(toolBar);
     }
     private  void addPlaybackBtns() {
@@ -176,7 +194,32 @@ public class MusicPlayerGUI extends JFrame {
     private void updateSongTitleArtist(Song song){
         songTitle.setText(song.getSongTitle());
         songArtist.setText(song.getSongArtist());
+        // Obtener duración y reiniciar progreso
+        try {
+            songDurationSeconds = Integer.parseInt(song.getSongLength());
+        } catch (Exception e) {
+            songDurationSeconds = 0;
+        }
+        currentSecond = 0;
+        updateTimeLabel();
+        playbackSlider.setValue(0);
+        playbackSlider.setEnabled(songDurationSeconds > 0);
+        if (progressTimer != null) progressTimer.stop();
+        if (songDurationSeconds > 0) {
+            progressTimer = new Timer(1000, evt -> {
+                if (currentSecond < songDurationSeconds) {
+                    currentSecond++;
+                    int percent = (int) ((currentSecond * 100.0) / songDurationSeconds);
+                    playbackSlider.setValue(percent);
+                    updateTimeLabel();
+                } else {
+                    progressTimer.stop();
+                }
+            });
+            progressTimer.start();
+        }
     }
+
     private void enablePauseButtonDisablePlayButton(){
      //recupera la referencia al boton del panel de reproduccionBtns
      JButton playButton = (JButton) playbackBtns.getComponent(1) ;
@@ -202,6 +245,19 @@ public class MusicPlayerGUI extends JFrame {
         pauseButton.setVisible(false);
         pauseButton.setEnabled(false);
     }
+
+    private void updateTimeLabel() {
+        String elapsed = formatSeconds(currentSecond);
+        String total = formatSeconds(songDurationSeconds);
+        timeLabel.setText(elapsed + " / " + total);
+    }
+
+    private String formatSeconds(int secs) {
+        int min = secs / 60;
+        int sec = secs % 60;
+        return String.format("%02d:%02d", min, sec);
+    }
+
     private ImageIcon loadImage(String imagePath) {
         try {
 
@@ -214,6 +270,27 @@ public class MusicPlayerGUI extends JFrame {
         }
         // no se puede encontrar el recurso
         return null;
+    }
+
+    private void setTheme(boolean dark) {
+        darkMode = dark;
+        Color frameColor = dark ? FRAME_COLOR_DARK : FRAME_COLOR_LIGHT;
+        Color textColor = dark ? TEXT_COLOR_DARK : TEXT_COLOR_LIGHT;
+        getContentPane().setBackground(frameColor);
+        songTitle.setForeground(textColor);
+        songArtist.setForeground(textColor);
+        timeLabel.setForeground(textColor);
+        playbackBtns.setBackground(null);
+        // Cambiar color de los botones
+        for (Component c : playbackBtns.getComponents()) {
+            if (c instanceof JButton) {
+                c.setBackground(null);
+            }
+        }
+        // Cambiar color del slider
+        playbackSlider.setBackground(null);
+        // Forzar repintado
+        repaint();
     }
 
 }
